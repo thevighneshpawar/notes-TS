@@ -1,9 +1,8 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 
-const router = Router();
+const router: Router = Router();
 
-// test route
-router.get("/test", (req, res) => {
+router.get("/test", (req: Request, res: Response) => {
   res.json({ message: "Auth route working ✅" });
 });
 
