@@ -225,3 +225,21 @@ export const logout = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Error logging out" });
   }
 };
+
+export const getMe = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await User.findById(req.user.id).select("-otp -otpExpiry");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ user });
+  } catch (err) {
+    console.error("GetMe error:", err);
+    res.status(500).json({ message: "Error fetching user details" });
+  }
+};
