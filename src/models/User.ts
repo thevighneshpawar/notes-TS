@@ -7,7 +7,7 @@ export interface IUser extends Document {
   email: string;
   otp?: string | undefined;
   otpExpiry?: Date | undefined;
-  refreshToken?: string;
+  refreshToken?: string | undefined;
   createdAt: Date;
 }
 

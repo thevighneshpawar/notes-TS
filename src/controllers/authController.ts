@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
-import User, { IUser } from "../models/User.js";
+import User from "../models/User.js";
 import { sendOtp } from "../utils/sendOtp.js";
 import jwt from "jsonwebtoken";
+import { AuthRequest } from "../middleware/authMiddleware.js";
 
+// ------------------- TOKEN HELPERS -------------------
 const generateTokens = (userId: string, email: string) => {
   const accessToken = jwt.sign(
     { id: userId, email },
@@ -28,52 +30,50 @@ const setTokensAsCookies = (
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 15 * 60 * 1000, // 15 minutes
+    maxAge: 15 * 60 * 1000,
   });
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
 
-// Signup (generate OTP)
+// ------------------- CONTROLLERS -------------------
+
+// SIGNUP
 export const signup = async (req: Request, res: Response) => {
   try {
     const { name, dob, email } = req.body;
 
     if (!name || !dob || !email) {
-      return res
-        .status(400)
-        .json({ message: "Name, DOB and Email are required" });
+      res.status(400).json({ message: "Name, DOB and Email are required" });
+      return;
     }
 
-    // Check if user already exists
-    let existingUser = await User.findOne({ email });
+    // Email regex check
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ message: "Invalid email format" });
+      return;
+    }
+
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
-        message: "User already exists. Please login instead.",
-      });
+      res
+        .status(400)
+        .json({ message: "User already exists. Please login instead." });
+      return;
     }
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Create new user
-    const newUser = new User({
-      name,
-      dob,
-      email,
-      otp,
-      otpExpiry,
-    });
-
+    const newUser = new User({ name, dob, email, otp, otpExpiry });
     await newUser.save();
 
-    // Send OTP
     await sendOtp(email, otp);
 
     res.json({ message: "OTP sent successfully for signup" });
@@ -83,23 +83,22 @@ export const signup = async (req: Request, res: Response) => {
   }
 };
 
+// SIGNIN
 export const signin = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+      res.status(400).json({ message: "Email is required" });
+      return;
     }
 
-    const user: IUser | null = await User.findOne({ email });
-
+    const user = await User.findOne({ email });
     if (!user) {
-      return res
-        .status(404)
-        .json({ message: "User not found. Please sign up first." });
+      res.status(404).json({ message: "User not found. Please signup first." });
+      return;
     }
 
-    // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -109,19 +108,21 @@ export const signin = async (req: Request, res: Response) => {
 
     await sendOtp(email, otp);
 
-    res.json({ message: "OTP sent successfully" });
+    res.json({ message: "OTP sent successfully for signin" });
   } catch (err) {
     console.error("Signin error:", err);
     res.status(500).json({ message: "Error sending OTP" });
   }
 };
 
+// VERIFY OTP
 export const verifyOtp = async (req: Request, res: Response) => {
   try {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      return res.status(400).json({ message: "Email and OTP are required" });
+      res.status(400).json({ message: "Email and OTP are required" });
+      return;
     }
 
     const user = await User.findOne({ email });
@@ -131,66 +132,65 @@ export const verifyOtp = async (req: Request, res: Response) => {
       !user.otpExpiry ||
       user.otpExpiry < new Date()
     ) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
+      res.status(400).json({ message: "Invalid or expired OTP" });
+      return;
     }
 
-    // Clear OTP
     user.otp = undefined;
     user.otpExpiry = undefined;
 
-    // Generate tokens
-    const { accessToken, refreshToken } = generateTokens(
-      user._id.toString(),
-      user.email
-    );
-
-    // Save refresh token in DB
+    const { accessToken, refreshToken } = generateTokens(user.id, user.email);
     user.refreshToken = refreshToken;
     await user.save();
 
     setTokensAsCookies(res, accessToken, refreshToken);
 
-    return res.json({
+    // Manually build safe user response (exclude otp & refreshToken)
+    res.json({
       message: "OTP verified",
-      user: { name: user.name, dob: user.dob, email: user.email },
+      user: {
+        id: user.id,
+        name: user.name,
+        dob: user.dob,
+        email: user.email,
+      },
     });
   } catch (err) {
     console.error("Verify OTP error:", err);
-    return res.status(500).json({ message: "Error verifying OTP" });
+    res.status(500).json({ message: "Error verifying OTP" });
   }
 };
 
+// REFRESH TOKEN
 export const refreshAccessToken = async (req: Request, res: Response) => {
   try {
-    const { refreshToken } = req.cookies;
-
+    const refreshToken = req.cookies?.["refreshToken"];
     if (!refreshToken) {
-      return res.status(400).json({ message: "Refresh token is required" });
+      res.status(400).json({ message: "Refresh token is required" });
+      return;
     }
 
-    // Find user with this refresh token
     const user = await User.findOne({ refreshToken });
     if (!user) {
-      return res.status(403).json({ message: "Invalid refresh token" });
+      res.status(403).json({ message: "Invalid refresh token" });
+      return;
     }
 
-    // Verify refresh token
     jwt.verify(
       refreshToken,
       process.env.JWT_REFRESH_SECRET || "refreshsecret",
-      (err: jwt.VerifyErrors | null) => {
+      (err, decoded: any) => {
         if (err) {
           res.status(403).json({ message: "Invalid or expired refresh token" });
           return;
         }
 
         const newAccessToken = jwt.sign(
-          { id: user._id, email: user.email },
+          { id: user.id, email: user.email },
           process.env.JWT_SECRET || "defaultsecret",
           { expiresIn: "15m" }
         );
 
-        // replace cookie
         res.cookie("accessToken", newAccessToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
@@ -204,5 +204,24 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Refresh error:", err);
     res.status(500).json({ message: "Error refreshing token" });
+  }
+};
+
+// LOGOUT
+export const logout = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findById(req.user?.id);
+    if (user) {
+      user.refreshToken = undefined;
+      await user.save();
+    }
+
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+
+    res.json({ message: "Logged out successfully" });
+  } catch (err) {
+    console.error("Logout error:", err);
+    res.status(500).json({ message: "Error logging out" });
   }
 };
