@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { verifyJWT } from "../middleware/authMiddleware.js";
+import { verifyJWT } from "../middleware/authMiddleware";
 import {
   createNote,
   getNotes,
   deleteNote,
   updateNote,
-} from "../controllers/noteController.js";
+} from "../controllers/noteController";
 
 const router: Router = Router();
 

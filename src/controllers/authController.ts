@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import User from "../models/User.js";
-import { sendOtp } from "../utils/sendOtp.js";
+import User from "../models/User";
+import { sendOtp } from "../utils/sendOtp";
 import jwt from "jsonwebtoken";
-import { AuthRequest } from "../middleware/authMiddleware.js";
+import { AuthRequest } from "../middleware/authMiddleware";
 
 // ------------------- TOKEN HELPERS -------------------
 const generateTokens = (userId: string, email: string) => {

@@ -6,6 +6,7 @@ declare namespace NodeJS {
     EMAIL_PASS?: string;
     EMAIL_USER?: string;
     JWT_REFRESH_SECRET?: string;
+    FRONTEND_URL?: string;
     NODE_ENV?: "development" | "production" | "test";
   }
 }

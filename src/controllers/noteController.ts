@@ -1,6 +1,6 @@
 import { Response } from "express";
-import Note from "../models/Note.js";
-import { AuthRequest } from "../middleware/authMiddleware.js";
+import Note from "../models/Note";
+import { AuthRequest } from "../middleware/authMiddleware";
 import mongoose from "mongoose";
 
 // CREATE
