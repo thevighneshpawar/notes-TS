@@ -61,9 +61,10 @@ export const signup = async (req: Request, res: Response) => {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      res
-        .status(400)
-        .json({ message: "User already exists. Please login instead." });
+      res.json({
+        success: false,
+        message: "User already exists. Please login instead.",
+      });
       return;
     }
 
@@ -89,13 +90,16 @@ export const signin = async (req: Request, res: Response) => {
     const { email } = req.body;
 
     if (!email) {
-      res.status(400).json({ message: "Email is required" });
+      res.status(400).json({ success: false, message: "Email is required" });
       return;
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-      res.status(404).json({ message: "User not found. Please signup first." });
+      res.json({
+        success: false,
+        message: "User not found. Please signup first.",
+      });
       return;
     }
 
@@ -108,7 +112,7 @@ export const signin = async (req: Request, res: Response) => {
 
     await sendOtp(email, otp);
 
-    res.json({ message: "OTP sent successfully for signin" });
+    res.json({ success: true, message: "OTP sent successfully for signin" });
   } catch (err) {
     console.error("Signin error:", err);
     res.status(500).json({ message: "Error sending OTP" });
@@ -121,7 +125,9 @@ export const verifyOtp = async (req: Request, res: Response) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      res.status(400).json({ message: "Email and OTP are required" });
+      res
+        .status(400)
+        .json({ success: false, message: "Email and OTP are required" });
       return;
     }
 
@@ -132,7 +138,9 @@ export const verifyOtp = async (req: Request, res: Response) => {
       !user.otpExpiry ||
       user.otpExpiry < new Date()
     ) {
-      res.status(400).json({ message: "Invalid or expired OTP" });
+      res
+        .status(400)
+        .json({ success: false, message: "Invalid or expired OTP" });
       return;
     }
 
@@ -166,13 +174,13 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies?.["refreshToken"];
     if (!refreshToken) {
-      res.status(400).json({ message: "Refresh token is required" });
+      res.status(401).json({ message: "Refresh token is required" });
       return;
     }
 
     const user = await User.findOne({ refreshToken });
     if (!user) {
-      res.status(403).json({ message: "Invalid refresh token" });
+      res.status(401).json({ message: "Invalid refresh token" });
       return;
     }
 

@@ -62,3 +62,36 @@ export const deleteNote = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Error deleting note" });
   }
 };
+
+//UPDATE
+export const updateNote = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+
+    if (!title || !content) {
+      return res
+        .status(400)
+        .json({ message: "Title and content are required" });
+    }
+
+    const note = await Note.findOneAndUpdate(
+      { _id: id, userId: (req as any).user.id }, // ensure user owns the note
+      { title, content },
+      { new: true, runValidators: true }
+    );
+
+    if (!note) {
+      return res
+        .status(404)
+        .json({ message: "Note not found or not authorized" });
+    }
+
+    res.status(200).json(note);
+    return;
+  } catch (err) {
+    console.error("Error updating note:", err);
+    res.status(500).json({ message: "Server error while updating note" });
+    return;
+  }
+};
