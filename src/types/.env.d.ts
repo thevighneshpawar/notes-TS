@@ -7,6 +7,8 @@ declare namespace NodeJS {
     EMAIL_USER?: string;
     JWT_REFRESH_SECRET?: string;
     FRONTEND_URL?: string;
+    GOOGLE_CLIENT_ID?: string;
+    GOOGLE_REDIRECT_URI?: string;
     NODE_ENV?: "development" | "production" | "test";
   }
 }

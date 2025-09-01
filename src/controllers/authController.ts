@@ -59,7 +59,11 @@ export const signup = async (req: Request, res: Response) => {
       return;
     }
 
-    const existingUser = await User.findOne({ email });
+    // Check if user exists with email auth
+    const existingUser = await User.findOne({ 
+      email,
+      authType: "email"
+    });
     if (existingUser) {
       res.json({
         success: false,
@@ -68,11 +72,31 @@ export const signup = async (req: Request, res: Response) => {
       return;
     }
 
+    // Check if email exists with Google auth
+    const existingGoogleUser = await User.findOne({ 
+      email,
+      authType: "google"
+    });
+    if (existingGoogleUser) {
+      res.json({
+        success: false,
+        message: "Email already registered with Google. Please use Google login.",
+      });
+      return;
+    }
+
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
 
-    const newUser = new User({ name, dob, email, otp, otpExpiry });
+    const newUser = new User({ 
+      name, 
+      dob, 
+      email, 
+      otp, 
+      otpExpiry,
+      authType: "email"
+    });
     await newUser.save();
 
     await sendOtp(email, otp);
@@ -94,7 +118,10 @@ export const signin = async (req: Request, res: Response) => {
       return;
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ 
+      email,
+      authType: "email"
+    });
     if (!user) {
       res.json({
         success: false,
@@ -131,7 +158,10 @@ export const verifyOtp = async (req: Request, res: Response) => {
       return;
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ 
+      email,
+      authType: "email"
+    });
     if (
       !user ||
       user.otp !== otp ||
@@ -161,6 +191,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
         name: user.name,
         dob: user.dob,
         email: user.email,
+        authType: user.authType,
       },
     });
   } catch (err) {
