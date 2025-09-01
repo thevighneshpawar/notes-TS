@@ -257,8 +257,19 @@ export const logout = async (req: AuthRequest, res: Response) => {
       await user.save();
     }
 
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/", // make sure this matches your cookie path
+    });
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/",
+    });
 
     res.json({ message: "Logged out successfully" });
   } catch (err) {
