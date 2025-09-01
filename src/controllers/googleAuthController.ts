@@ -75,7 +75,7 @@ export const googleCallback = async (req: Request, res: Response) => {
     }
 
     // Check if user exists, otherwise create
-    let user = await User.findOne({ email, authType: "google" });
+    let user = await User.findOne({ email });
     if (!user) {
       user = new User({ name, email, googleId, authType: "google" });
       await user.save();
@@ -93,7 +93,7 @@ export const googleCallback = async (req: Request, res: Response) => {
     setGoogleTokensAsCookies(res, accessToken, refreshToken);
 
     // Redirect back to frontend app (with success)
-    res.redirect("http://localhost:5173/notes");
+    res.redirect(`${process.env.FRONTEND_URL}/notes`); // Adjust as needed
   } catch (err) {
     console.error("Google callback error:", err.response?.data || err.message);
     res.status(500).json({ success: false, message: "Google login failed" });
