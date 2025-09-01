@@ -4,10 +4,14 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import noteRoutes from "./routes/noteRoutes.js";
+import { securityHeaders } from "./middleware/securityMiddleware.js";
 
 dotenv.config();
 
 const app: Application = express();
+
+// Security headers middleware
+app.use(securityHeaders);
 
 // Middlewares
 app.use(
@@ -16,7 +20,7 @@ app.use(
     credentials: true, // allow cookies
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: "10mb" })); // Limit request body size
 app.use(cookieParser());
 
 // Routes
