@@ -77,7 +77,13 @@ export const googleCallback = async (req: Request, res: Response) => {
     // Check if user exists, otherwise create
     let user = await User.findOne({ email });
     if (!user) {
-      user = new User({ name, email, googleId, authType: "google" });
+      user = new User({
+        name,
+        email,
+        googleId,
+        authType: "google",
+        isVerified: true,
+      });
       await user.save();
     }
 

@@ -49,59 +49,62 @@ export const signup = async (req: Request, res: Response) => {
     const { name, dob, email } = req.body;
 
     if (!name || !dob || !email) {
-      res.status(400).json({ message: "Name, DOB and Email are required" });
-      return;
+      return res
+        .status(400)
+        .json({ message: "Name, DOB and Email are required" });
     }
 
-    // Email regex check
+    // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      res.status(400).json({ message: "Invalid email format" });
-      return;
-    }
-
-    // Check if user exists with email auth
-    const existingUser = await User.findOne({ 
-      email,
-      authType: "email"
-    });
-    if (existingUser) {
-      res.json({
-        success: false,
-        message: "User already exists. Please login instead.",
-      });
-      return;
-    }
-
-    // Check if email exists with Google auth
-    const existingGoogleUser = await User.findOne({ 
-      email,
-      authType: "google"
-    });
-    if (existingGoogleUser) {
-      res.json({
-        success: false,
-        message: "Email already registered with Google. Please use Google login.",
-      });
-      return;
+      return res.status(400).json({ message: "Invalid email format" });
     }
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
 
-    const newUser = new User({ 
-      name, 
-      dob, 
-      email, 
-      otp, 
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (user) {
+      if (user.isVerified) {
+        // Already verified → block duplicate signup
+        return res.json({
+          success: false,
+          message: "User already exists. Please login instead.",
+        });
+      } else {
+        // Exists but not verified → update OTP
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        user.name = name; // update in case user re-entered
+        user.dob = dob;
+        await user.save();
+
+        await sendOtp(email, otp);
+
+        return res.json({
+          success: true,
+          message: "OTP resent successfully for signup",
+        });
+      }
+    }
+
+    // If no user → create new one
+    user = new User({
+      name,
+      dob,
+      email,
+      otp,
       otpExpiry,
-      authType: "email"
+      authType: "email",
+      isVerified: false,
     });
-    await newUser.save();
+    await user.save();
 
     await sendOtp(email, otp);
 
-    res.json({ message: "OTP sent successfully for signup" });
+    res.json({ success: true, message: "OTP sent successfully for signup" });
   } catch (err) {
     console.error("Signup error:", err);
     res.status(500).json({ message: "Error sending OTP" });
@@ -118,9 +121,9 @@ export const signin = async (req: Request, res: Response) => {
       return;
     }
 
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       email,
-      authType: "email"
+      isVerified: true,
     });
     if (!user) {
       res.json({
@@ -158,9 +161,8 @@ export const verifyOtp = async (req: Request, res: Response) => {
       return;
     }
 
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       email,
-      authType: "email"
     });
     if (
       !user ||
@@ -173,7 +175,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
         .json({ success: false, message: "Invalid or expired OTP" });
       return;
     }
-
+    user.isVerified = true;
     user.otp = undefined;
     user.otpExpiry = undefined;
 
