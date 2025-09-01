@@ -12,17 +12,13 @@ import {
   googleCallback,
 } from "../controllers/googleAuthController.js";
 import { verifyJWT } from "../middleware/authMiddleware.js";
-import {
-  authRateLimit,
-  sanitizeInput,
-} from "../middleware/securityMiddleware.js";
 
 const router: Router = Router();
 
 // Regular email authentication routes
-router.post("/signup", authRateLimit, sanitizeInput, signup);
-router.post("/signin", authRateLimit, sanitizeInput, signin);
-router.post("/verify-otp", authRateLimit, verifyOtp);
+router.post("/signup", signup);
+router.post("/signin", signin);
+router.post("/verify-otp", verifyOtp);
 router.post("/refresh", refreshAccessToken);
 router.get("/me", verifyJWT, getMe);
 router.post("/logout", verifyJWT, logout);

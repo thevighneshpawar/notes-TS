@@ -4,14 +4,10 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import noteRoutes from "./routes/noteRoutes.js";
-import { securityHeaders } from "./middleware/securityMiddleware.js";
 
 dotenv.config();
 
 const app: Application = express();
-
-// Security headers middleware
-app.use(securityHeaders);
 
 // Middlewares
 app.use(
